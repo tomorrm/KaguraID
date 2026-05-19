@@ -1,0 +1,354 @@
+name: Build & Obfuscate
+
+on:
+  push:
+    branches: [main, release]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      obfuscate_level:
+        description: "ObfuscateLevel"
+        required: false
+        default: "high"
+        type: choice
+        options: [high, medium, low]
+
+env:
+  NODE_VERSION: "20"
+  SRC_DIR: src
+  RELEASE_DIR: release
+  OBFUSCATE_LEVEL: ${{ github.event.inputs.obfuscate_level || 'high' }}
+
+jobs:
+  # ============================================================
+  # Job 1: lint
+  # ============================================================
+  lint:
+    name: "🔍 Lint (ESLint)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint
+        run: |
+          # Use git ls-files to get exact case-sensitive filenames from the index
+          JS_FILES=$(git ls-files "${{ env.SRC_DIR }}/*.js" "${{ env.SRC_DIR }}/**/*.js" 2>/dev/null | tr '\n' ' ')
+          # Fallback to find if git ls-files returns nothing
+          if [ -z "${JS_FILES}" ]; then
+            JS_FILES=$(find "${{ env.SRC_DIR }}" -name "*.js" | tr '\n' ' ')
+          fi
+          if [ -z "${JS_FILES}" ]; then
+            echo "⚠️  No .js files were found in ${{ env.SRC_DIR }}"
+            exit 1
+          fi
+          echo "Target File: ${JS_FILES}"
+          # shellcheck disable=SC2086
+          npx eslint ${JS_FILES} --format=stylish
+
+      - name: Run ESLint (SARIF for PR)
+        if: github.event_name == 'pull_request'
+        run: |
+          npm install --save-dev @microsoft/eslint-formatter-sarif
+          JS_FILES=$(git ls-files "${{ env.SRC_DIR }}/*.js" "${{ env.SRC_DIR }}/**/*.js" 2>/dev/null | tr '\n' ' ')
+          if [ -z "${JS_FILES}" ]; then
+            JS_FILES=$(find "${{ env.SRC_DIR }}" -name "*.js" | tr '\n' ' ')
+          fi
+          # shellcheck disable=SC2086
+          npx eslint ${JS_FILES} \
+            --format=@microsoft/eslint-formatter-sarif \
+            --output-file=eslint-results.sarif || true
+
+      - name: Upload SARIF report
+        if: github.event_name == 'pull_request'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: eslint-results.sarif
+          category: eslint
+        continue-on-error: true
+
+  # ============================================================
+  # Job 2: format
+  # ============================================================
+  format:
+    name: "🎨 Format (Prettier)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Prettier
+        run: npm install -g prettier
+
+      - name: Check formatting
+        run: |
+          # Use git ls-files to get exact case-sensitive filenames from the index
+          JS_FILES=$(git ls-files "${{ env.SRC_DIR }}/*.js" "${{ env.SRC_DIR }}/**/*.js" 2>/dev/null | tr '\n' ' ')
+          if [ -z "${JS_FILES}" ]; then
+            JS_FILES=$(find "${{ env.SRC_DIR }}" -name "*.js" | tr '\n' ' ')
+          fi
+          if [ -z "${JS_FILES}" ]; then
+            echo "⚠️  No .js files were found in ${{ env.SRC_DIR }}"
+            exit 1
+          fi
+          echo "Target files: ${JS_FILES}"
+          # shellcheck disable=SC2086
+          prettier --check ${JS_FILES}
+          echo "💡 Fix locally: npx prettier --write src/**/*.js"
+
+  # ============================================================
+  # Job 3: obfuscate
+  # ============================================================
+  obfuscate:
+    name: "🔒 Minify & Obfuscate"
+    runs-on: ubuntu-latest
+    needs: [lint, format]
+    if: >
+      github.event_name != 'pull_request' && (
+        github.ref == 'refs/heads/main' ||
+        github.ref == 'refs/heads/release' ||
+        startsWith(github.ref, 'refs/tags/')
+      )
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install tools
+        run: npm install -g terser javascript-obfuscator
+
+      - name: Write obfuscation options to file
+        run: |
+          mkdir -p /tmp/obf
+          if [ "${{ env.OBFUSCATE_LEVEL }}" = "high" ]; then
+            cat > /tmp/obf/opts.txt << 'OPTS'
+          --compact true
+          --control-flow-flattening true
+          --control-flow-flattening-threshold 0.75
+          --dead-code-injection true
+          --dead-code-injection-threshold 0.4
+          --string-array true
+          --string-array-encoding rc4
+          --string-array-threshold 0.75
+          --identifier-names-generator hexadecimal
+          --rename-globals false
+          --self-defending true
+          --disable-console-output false
+          OPTS
+          elif [ "${{ env.OBFUSCATE_LEVEL }}" = "medium" ]; then
+            cat > /tmp/obf/opts.txt << 'OPTS'
+          --compact true
+          --string-array true
+          --string-array-encoding base64
+          --string-array-threshold 0.5
+          --identifier-names-generator hexadecimal
+          --rename-globals false
+          OPTS
+          else
+            cat > /tmp/obf/opts.txt << 'OPTS'
+          --compact true
+          --string-array true
+          --string-array-threshold 0.3
+          --identifier-names-generator mangled
+          OPTS
+          fi
+          echo "🔧 Obfuscation level: ${{ env.OBFUSCATE_LEVEL }}"
+          echo "🔧 Options:"
+          cat /tmp/obf/opts.txt
+
+      - name: Minify & Obfuscate
+        run: |
+          mkdir -p ${{ env.RELEASE_DIR }}
+          VERSION="${{ github.ref_name }}"
+          BUILD_DATE=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          OBF_OPTS=$(tr '\n' ' ' < /tmp/obf/opts.txt)
+
+          JS_FILES=$(find "${{ env.SRC_DIR }}" -name "*.js")
+          if [ -z "${JS_FILES}" ]; then
+            echo "❌ No .js files were found in ${{ env.SRC_DIR }}"
+            exit 1
+          fi
+
+          echo "${JS_FILES}" | while IFS= read -r src_file; do
+            [ -z "$src_file" ] && continue
+            filename=$(basename "$src_file" .js)
+
+            terser "$src_file" --compress --mangle --output "/tmp/${filename}.min.js"
+            echo "  ✅ Minified  : ${filename}.min.js ($(wc -c < /tmp/${filename}.min.js) bytes)"
+
+            # shellcheck disable=SC2086
+            javascript-obfuscator "/tmp/${filename}.min.js" \
+              --output "${{ env.RELEASE_DIR }}/${filename}.js" \
+              ${OBF_OPTS}
+
+            printf "/* v%s | Built: %s | Level: %s */\n" \
+              "${VERSION}" "${BUILD_DATE}" "${{ env.OBFUSCATE_LEVEL }}" | \
+              cat - "${{ env.RELEASE_DIR }}/${filename}.js" > /tmp/headed.js
+            mv /tmp/headed.js "${{ env.RELEASE_DIR }}/${filename}.js"
+
+            ORIG=$(wc -c < "$src_file")
+            FINAL=$(wc -c < "${{ env.RELEASE_DIR }}/${filename}.js")
+            RATIO=$(awk "BEGIN{printf \"%.1f\", ${FINAL}/${ORIG}*100}")
+            echo "  ✅ Obfuscated: ${filename}.js (${FINAL} bytes, ${RATIO}% of original)"
+          done
+
+          echo "📊 Generated files:"
+          ls -lh "${{ env.RELEASE_DIR }}/"
+
+      - name: Upload obfuscated artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: obfuscated-output
+          path: ${{ env.RELEASE_DIR }}/
+          retention-days: 7
+
+  # ============================================================
+  # Job 4: package
+  # ============================================================
+  package:
+    name: "🗜️ Package"
+    runs-on: ubuntu-latest
+    needs: [obfuscate]
+    if: needs.obfuscate.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download obfuscated files
+        uses: actions/download-artifact@v4
+        with:
+          name: obfuscated-output
+          path: ${{ env.RELEASE_DIR }}
+
+      - name: Create ZIP package
+        run: |
+          VERSION="${{ github.ref_name }}"
+          PKG_NAME="script-${VERSION}"
+          mkdir -p "pkg/${PKG_NAME}"
+          cp ${{ env.RELEASE_DIR }}/*.js "pkg/${PKG_NAME}/"
+
+          if [ -f "docs/INSTALL.md" ]; then
+            cp docs/INSTALL.md "pkg/${PKG_NAME}/README.md"
+          else
+            cat > "pkg/${PKG_NAME}/README.md" << 'READMEEOF'
+          # Installation Instructions
+
+          Add the following script tag immediately before the </body> tag in your HTML:
+
+          ```html
+          <script src="script.js"></script>
+          ```
+          READMEEOF
+          fi
+
+          cd pkg && zip -r "../${PKG_NAME}.zip" "${PKG_NAME}/"
+          echo "PKG_NAME=${PKG_NAME}" >> $GITHUB_ENV
+          echo "📦 ${PKG_NAME}.zip ($(wc -c < ../${PKG_NAME}.zip) bytes)"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: "*.zip"
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Release ${{ github.ref_name }}"
+          body: |
+            ## Distribution Package ${{ github.ref_name }}
+
+            ### Included Files
+            - Obfuscated JavaScript file
+            - Installation instructions (README.md)
+
+            ### Changes
+            ${{ github.event.head_commit.message }}
+          files: "*.zip"
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') }}
+
+  # ============================================================
+  # Job 5: pages (GitHub Pages — demo.html)
+  # ============================================================
+  pages:
+    name: "🌐 Publish GitHub Pages"
+    runs-on: ubuntu-latest
+    # Publish on every push to main/release and on tags
+    if: >
+      github.event_name != 'pull_request' && (
+        github.ref == 'refs/heads/main' ||
+        github.ref == 'refs/heads/release' ||
+        startsWith(github.ref, 'refs/tags/')
+      )
+    # Grant write permission to deploy Pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Pages site
+        run: |
+          mkdir -p _site
+          # Copy demo page as index
+          cp example/demo.html _site/index.html
+          # Copy library so the demo can load it via relative path
+          mkdir -p _site/src
+          cp src/kagura.js _site/src/kagura.js
+          # Rewrite the script src to match the deployed directory layout
+          sed -i 's|../src/kagura.js|src/kagura.js|g' _site/index.html
+          echo "✅ Site built:"
+          ls -lh _site/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+  # ============================================================
+  # Job 6: deploy
+  # ============================================================
+  # deploy:
+  #   name: "🚀 Deploy to Distribution Server"
+  #   runs-on: ubuntu-latest
+  #   needs: [package]
+  #   if: startsWith(github.ref, 'refs/tags/')
+  #   environment:
+  #     name: production
+  #     url: ${{ vars.DEPLOY_URL }}
+  #   steps:
+  #     - name: Download package
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: package
+
+  #     - name: Upload to distribution server
+  #       run: |
+  #         VERSION="${{ github.ref_name }}"
+  #         curl -f -X POST "${{ secrets.DEPLOY_URL }}" \
+  #           -H "Authorization: Bearer ${{ secrets.DEPLOY_TOKEN }}" \
+  #           -F "file=@script-${VERSION}.zip" \
+  #           -F "version=${VERSION}"

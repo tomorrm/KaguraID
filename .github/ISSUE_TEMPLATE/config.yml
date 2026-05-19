@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/tomorrm/kagurajs/security/advisories/new
+    about: Please report security vulnerabilities privately using GitHub's private advisory feature.
+  - name: Privacy question
+    url: https://github.com/tomorrm/kagurajs/discussions
+    about: Privacy and legal questions about deploying kagura.js.

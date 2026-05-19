@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>kagura.js — Browser Fingerprint Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #070c12;
+    --bg2:       #0c1219;
+    --bg3:       #111a24;
+    --bg4:       #18242f;
+    --border:    #1a2d3e;
+    --accent:    #00d4ff;
+    --accent2:   #00ff9d;
+    --accent3:   #ff6b35;
+    --warn:      #ffb347;
+    --error:     #ff4560;
+    --match:     #a78bfa;
+    --text:      #c9d8e8;
+    --text-dim:  #3d5568;
+    --text-mid:  #6a8fa8;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none; z-index: 0;
+  }
+
+  .corner { position: fixed; width: 100px; height: 100px; border-color: var(--accent); border-style: solid; opacity: .2; pointer-events: none; z-index: 1; }
+  .corner-tl { top: 20px; left: 20px; border-width: 1px 0 0 1px; }
+  .corner-br { bottom: 20px; right: 20px; border-width: 0 1px 1px 0; }
+
+  .app { position: relative; z-index: 2; max-width: 1280px; margin: 0 auto; padding: 44px 28px 100px; }
+
+  header { margin-bottom: 52px; }
+
+  .header-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--accent); font-size: 10px; letter-spacing: .22em;
+    text-transform: uppercase; margin-bottom: 14px; opacity: .75;
+  }
+  .header-eyebrow::before {
+    content: ''; display: block; width: 20px; height: 1px; background: var(--accent); opacity: .6;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(40px, 7vw, 80px);
+    font-weight: 800; line-height: .95; letter-spacing: -.03em; color: #fff;
+  }
+  h1 em { color: transparent; -webkit-text-stroke: 1px var(--accent); font-style: normal; }
+
+  .header-sub { margin-top: 18px; color: var(--text-mid); font-size: 12px; max-width: 520px; line-height: 1.9; }
+
+  .scan-bar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 18px 22px; background: var(--bg2);
+    border: 1px solid var(--border); border-left: 2px solid var(--accent);
+    margin-bottom: 28px;
+  }
+
+  .btn {
+    appearance: none; border: none; cursor: pointer;
+    font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    padding: 9px 24px; transition: all .12s; white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--accent); color: var(--bg);
+    clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px));
+  }
+  .btn-primary:hover { background: #fff; transform: translateY(-1px); }
+  .btn-primary:disabled { background: var(--text-dim); cursor: not-allowed; transform: none; }
+
+  .btn-compare {
+    background: transparent; color: var(--match);
+    border: 1px solid var(--match); padding: 8px 20px;
+    opacity: 0; pointer-events: none; transition: opacity .3s, background .12s;
+  }
+  .btn-compare.visible { opacity: 1; pointer-events: auto; }
+  .btn-compare:hover { background: rgba(167,139,250,.1); }
+
+  .status-line { flex: 1; font-size: 11px; color: var(--text-dim); }
+  .status-line b { color: var(--accent2); }
+  .status-line .err { color: var(--error); }
+
+  .progress-bar { height: 1px; background: var(--bg3); margin-bottom: 28px; overflow: hidden; opacity: 0; transition: opacity .3s; }
+  .progress-bar.visible { opacity: 1; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); width: 0%; transition: width .35s ease; box-shadow: 0 0 6px var(--accent); }
+  @keyframes pulse-bar { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .scanning .progress-fill { animation: pulse-bar 1.4s ease-in-out infinite; }
+
+  .id-panel {
+    display: grid;
+    grid-template-columns: 2fr 2fr 1fr;
+    gap: 14px; margin-bottom: 28px;
+  }
+  @media (max-width: 860px) { .id-panel { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .id-panel { grid-template-columns: 1fr; } }
+
+  .id-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    padding: 18px 22px; position: relative; overflow: hidden;
+    transition: border-color .3s;
+  }
+  .id-card.ready { border-color: rgba(0,255,157,.4); }
+  .id-card::after {
+    content: ''; position: absolute; top: 0; right: 0;
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, transparent 50%, rgba(0,212,255,.05) 50%);
+  }
+  .id-label { font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 7px; }
+  .id-value {
+    font-size: 12px; font-weight: 600; color: var(--accent);
+    word-break: break-all; min-height: 18px; letter-spacing: .03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .id-value.v-session { color: var(--accent3); }
+  .id-value.v-stable  { color: var(--accent2); font-size: 18px; letter-spacing: .06em; }
+  .id-desc { margin-top: 5px; font-size: 9px; color: var(--text-dim); line-height: 1.5; }
+
+  .scores-row { display: flex; gap: 14px; margin-bottom: 28px; flex-wrap: wrap; }
+  .score-box { flex: 1; min-width: 150px; background: var(--bg2); border: 1px solid var(--border); padding: 14px 18px; }
+  .score-label { font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 7px; }
+  .score-meter { height: 3px; background: var(--bg4); margin-bottom: 7px; border-radius: 2px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 2px; transition: width .9s cubic-bezier(.4,0,.2,1); width: 0%; }
+  .score-fill.sf-conf  { background: linear-gradient(90deg, var(--accent3), var(--accent)); }
+  .score-fill.sf-stab  { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .score-fill.sf-cov   { background: linear-gradient(90deg, var(--accent2), #80ffcc); }
+  .score-fill.sf-match { background: linear-gradient(90deg, var(--match), #c4b5fd); }
+  .score-num { font-size: 20px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+  .score-unit { font-size: 10px; color: var(--text-dim); }
+
+  .match-banner {
+    display: none; align-items: center; gap: 14px;
+    padding: 14px 20px; margin-bottom: 28px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-left: 2px solid var(--match);
+  }
+  .match-banner.visible { display: flex; }
+  .match-verdict {
+    font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .match-verdict.same      { color: var(--accent2); }
+  .match-verdict.likely    { color: var(--accent); }
+  .match-verdict.unknown   { color: var(--warn); }
+  .match-verdict.different { color: var(--error); }
+  .match-detail { font-size: 11px; color: var(--text-mid); }
+
+  .signals-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+  .signals-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: #fff; letter-spacing: .06em; text-transform: uppercase; }
+  .signal-count { font-size: 10px; color: var(--accent); background: rgba(0,212,255,.07); padding: 2px 10px; border: 1px solid rgba(0,212,255,.18); }
+  .filter-btns { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+  .filter-btn {
+    appearance: none; border: 1px solid var(--border); background: transparent;
+    color: var(--text-dim); font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: .12em; text-transform: uppercase;
+    padding: 4px 11px; cursor: pointer; transition: all .12s;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,.06);
+  }
+
+  .signals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: 10px;
+  }
+
+  @keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+  .signal-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    padding: 13px 15px; cursor: pointer; transition: border-color .12s, background .12s;
+    animation: fadeUp .25s ease both;
+  }
+  .signal-card:hover { border-color: rgba(0,212,255,.35); background: var(--bg3); }
+  .signal-card.expanded { border-color: var(--accent); }
+
+  .signal-card.stable-sig .signal-key::after {
+    content: "●"; color: var(--accent2); font-size: 7px; margin-left: 5px; vertical-align: middle;
+  }
+
+  .signal-card.mismatch-sig { border-left: 2px solid var(--match); }
+  .signal-card.error-sig    { border-left: 2px solid var(--error); }
+
+  .signal-header { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+  .signal-key { font-size: 11px; font-weight: 600; color: var(--text); flex: 1; }
+  .signal-weight {
+    font-size: 8px; padding: 1px 5px; color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .signal-duration { font-size: 9px; color: var(--text-dim); }
+  .signal-badge { font-size: 8px; padding: 1px 5px; font-weight: 600; letter-spacing: .04em; }
+  .signal-badge.ok  { background: rgba(0,255,157,.08); color: var(--accent2); border: 1px solid rgba(0,255,157,.2); }
+  .signal-badge.err { background: rgba(255,69,96,.08); color: var(--error);   border: 1px solid rgba(255,69,96,.2); }
+  .signal-badge.mm  { background: rgba(167,139,250,.1); color: var(--match);  border: 1px solid rgba(167,139,250,.25); }
+
+  .signal-preview {
+    font-size: 10px; color: var(--text-mid);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .signal-detail { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .signal-card.expanded .signal-detail { display: block; }
+  .signal-detail pre {
+    font-size: 10px; color: var(--text); white-space: pre-wrap; word-break: break-all;
+    max-height: 180px; overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .signal-detail pre::-webkit-scrollbar { width: 3px; }
+  .signal-detail pre::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .diff-old { color: var(--error); }
+  .diff-new { color: var(--accent2); }
+
+  footer {
+    margin-top: 72px; padding-top: 22px; border-top: 1px solid var(--border);
+    display: flex; gap: 24px; align-items: center; flex-wrap: wrap;
+    color: var(--text-dim); font-size: 10px;
+  }
+  footer b { color: var(--text-mid); }
+  .footer-privacy { margin-left: auto; color: var(--text-dim); font-style: italic; }
+</style>
+</head>
+<body>
+
+<div class="corner corner-tl"></div>
+<div class="corner corner-br"></div>
+
+<div class="app">
+
+  <header>
+    <div class="header-eyebrow">Browser Intelligence</div>
+    <h1>kagura.js</h1>
+    <p class="header-sub">
+      Browser fingerprinting library.<br>
+      Proprietary <b>KaguraHash-256</b> algorithm · 3-layer ID system · Fuzzy match scoring.
+    </p>
+  </header>
+
+  <div class="scan-bar">
+    <button class="btn btn-primary" id="btnScan">▶ SCAN</button>
+    <button class="btn btn-compare" id="btnCompare">⇄ COMPARE WITH LAST</button>
+    <div class="status-line" id="statusLine">
+      Ready — press <b>SCAN</b> to collect fingerprint
+    </div>
+  </div>
+
+  <div class="progress-bar" id="progressBar">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <div class="match-banner" id="matchBanner">
+    <div class="match-verdict" id="matchVerdict">—</div>
+    <div class="match-detail" id="matchDetail"></div>
+  </div>
+
+  <div class="id-panel">
+    <div class="id-card" id="cardVisitor">
+      <div class="id-label">Visitor ID — KaguraHash-256 (stable signals)</div>
+      <div class="id-value" id="visitorId">—</div>
+      <div class="id-desc">64-char hash of stable signals only. Consistent across revisits.</div>
+    </div>
+    <div class="id-card" id="cardSession">
+      <div class="id-label">Session ID — KaguraHash-256 (all signals)</div>
+      <div class="id-value v-session" id="sessionId">—</div>
+      <div class="id-desc">64-char hash of all 52 signals. Changes with battery/network state.</div>
+    </div>
+    <div class="id-card" id="cardStable">
+      <div class="id-label">Stable ID (16-char)</div>
+      <div class="id-value v-stable" id="stableId">—</div>
+      <div class="id-desc">First 16 chars of Visitor ID. Use as a compact DB key.</div>
+    </div>
+  </div>
+
+  <div class="scores-row">
+    <div class="score-box">
+      <div class="score-label">Confidence</div>
+      <div class="score-meter"><div class="score-fill sf-conf" id="confFill"></div></div>
+      <span class="score-num" id="confNum">—</span><span class="score-unit"> score</span>
+    </div>
+    <div class="score-box">
+      <div class="score-label">Stability</div>
+      <div class="score-meter"><div class="score-fill sf-stab" id="stabFill"></div></div>
+      <span class="score-num" id="stabNum">—</span><span class="score-unit"> score</span>
+    </div>
+    <div class="score-box">
+      <div class="score-label">Signal Coverage</div>
+      <div class="score-meter"><div class="score-fill sf-cov" id="covFill"></div></div>
+      <span class="score-num" id="covNum">—</span><span class="score-unit"> / <span id="covTotal">—</span></span>
+    </div>
+    <div class="score-box">
+      <div class="score-label">Match Score</div>
+      <div class="score-meter"><div class="score-fill sf-match" id="matchFill"></div></div>
+      <span class="score-num" id="matchNum">—</span><span class="score-unit" id="matchVerdict2"></span>
+    </div>
+    <div class="score-box">
+      <div class="score-label">Scan Duration</div>
+      <div class="score-meter" style="background:transparent"></div>
+      <span class="score-num" id="scanDuration">—</span><span class="score-unit"> ms</span>
+    </div>
+  </div>
+
+  <div class="signals-header">
+    <div class="signals-title">Signals</div>
+    <div class="signal-count" id="signalCount">0 collected</div>
+    <div class="filter-btns">
+      <button class="filter-btn active" data-filter="all">ALL</button>
+      <button class="filter-btn" data-filter="stable">STABLE</button>
+      <button class="filter-btn" data-filter="session">SESSION</button>
+      <button class="filter-btn" data-filter="error">ERRORS</button>
+      <button class="filter-btn" data-filter="mismatch" id="filterMismatch" style="display:none">MISMATCH</button>
+    </div>
+  </div>
+
+  <div class="signals-grid" id="signalsGrid"></div>
+
+  <footer>
+    <span><b>kagura</b> <span id="footerVersion">v-</span></span>
+    <span>Algorithm: <b>KaguraHash-256</b></span>
+    <span>Signals: <b id="footerSignalCount">52</b> total</span>
+    <span class="footer-privacy">// No data is transmitted externally</span>
+  </footer>
+
+</div>
+
+<script src="../src/kagura.js"></script>
+
+<script>
+(function () {
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+  const LIB_VERSION = typeof kagura !== "undefined" && kagura.VERSION ? kagura.VERSION : "unknown";
+  $("footerVersion").textContent = "v" + LIB_VERSION;
+
+  const STABLE_KEYS = new Set([
+    "canvas", "webGlBasics", "webGlExtensions", "webGL2Params",
+    "fonts", "audio", "hardware",
+    "screen", "browserEnv", "visualPrefs", "cssFeatures", "vendorFlavors",
+    "workers", "wasm", "intl", "applePay",
+    "plugins", "math", "timezone", "locale", "pointerPrecision",
+    "speechSynthesis", "mediaDevices", "timingJitter",
+    "shaderPrecision", "canvasNoise", "cssComputedStyle", "fontLoadAPI",
+    "userAgentData", "deviceSensors", "webXR", "offscreenCanvas",
+    "domAPIs", "screenLuminance",
+  ]);
+
+  const SIGNAL_WEIGHTS = {
+    canvas: 15, webGlBasics: 12, fonts: 12, webGlExtensions: 10,
+    audio: 10, shaderPrecision: 9, hardware: 8, math: 8, webGL2Params: 8,
+    canvasNoise: 7, fontLoadAPI: 7,
+    cssFeatures: 6, screen: 6, speechSynthesis: 6, cssComputedStyle: 6,
+    vendorFlavors: 5, plugins: 5, browserEnv: 5, timingJitter: 5, domAPIs: 5, userAgentData: 5,
+    mediaDevices: 4, visualPrefs: 4, intl: 4, applePay: 4, timezone: 4,
+    deviceSensors: 4, offscreenCanvas: 4,
+    locale: 3, pointerPrecision: 3, workers: 3, wasm: 3, screenLuminance: 3, webXR: 3,
+    screenFrame: 2, gpuScore: 2, audioLatency: 2, memory: 2,
+    webrtcIPs: 2, storageQuota: 2, autofillHint: 2, permissions: 2, webRTCCodecs: 2,
+    extensionHints: 3, battery: 1, network: 1, clipboardAccess: 1,
+    performance: 1, windowContext: 1, gamepad: 1, reducedData: 1, connectionType: 1,
+  };
+
+  let previousComponents = null;
+  let currentComponents  = null;
+  let currentFilter      = "all";
+
+  function preview(value) {
+    if (value === null || value === undefined) return "null";
+    if (typeof value === "boolean") return String(value);
+    if (typeof value === "number")  return String(value);
+    if (typeof value === "string")  return value.length > 64 ? value.slice(0, 64) + "…" : value;
+    if (Array.isArray(value)) {
+      if (value.length === 0) return "[]";
+      if (typeof value[0] === "string" && value.length <= 6)
+        return "[" + value.join(", ") + "]";
+      return "Array(" + value.length + ")";
+    }
+    if (typeof value === "object") {
+      const keys = Object.keys(value);
+      if (keys.length <= 3) {
+        return "{" + keys.map(k => k + ": " + (typeof value[k] === "object" ? "{…}" : String(value[k]))).join(", ") + "}";
+      }
+      return "{" + keys.slice(0, 3).join(", ") + ", …} (" + keys.length + " keys)";
+    }
+    return String(value);
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function renderSignalCard(key, comp, prevComp, index) {
+    const isErr    = "error" in comp;
+    const isStable = STABLE_KEYS.has(key);
+    const weight   = SIGNAL_WEIGHTS[key] || 1;
+
+    let isMismatch = false;
+    let diffHtml   = "";
+    if (prevComp && !isErr && !("error" in prevComp)) {
+      const va = JSON.stringify(comp.value);
+      const vb = JSON.stringify(prevComp.value);
+      isMismatch = va !== vb;
+      if (isMismatch) {
+        diffHtml = `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">` +
+          `<div style="font-size:9px;color:var(--text-dim);margin-bottom:4px">PREVIOUS SCAN</div>` +
+          `<div class="diff-old" style="font-size:10px;word-break:break-all">${escHtml(preview(prevComp.value))}</div>` +
+          `</div>`;
+      }
+    }
+
+    const badge     = isErr ? "err" : isMismatch ? "mm" : "ok";
+    const badgeText = isErr ? "ERROR" : isMismatch ? "DIFF" : "OK";
+    const dur       = comp.duration ? comp.duration + "ms" : "";
+    const prevText  = isErr
+      ? (comp.error && comp.error.message ? comp.error.message : String(comp.error))
+      : preview(comp.value);
+
+    const detailJson = isErr
+      ? JSON.stringify({ error: comp.error && comp.error.message ? comp.error.message : String(comp.error) }, null, 2)
+      : JSON.stringify(comp.value, null, 2);
+
+    const classes = [
+      "signal-card",
+      isStable    ? "stable-sig"   : "",
+      isErr       ? "error-sig"    : "",
+      isMismatch  ? "mismatch-sig" : "",
+    ].filter(Boolean).join(" ");
+
+    return `<div class="${classes}"
+      data-key="${escHtml(key)}"
+      data-stable="${isStable}"
+      data-err="${isErr}"
+      data-mismatch="${isMismatch}"
+      style="animation-delay:${index * 12}ms">
+      <div class="signal-header">
+        <div class="signal-key">${escHtml(key)}</div>
+        <div class="signal-weight">w:${weight}</div>
+        <div class="signal-duration">${dur}</div>
+        <span class="signal-badge ${badge}">${badgeText}</span>
+      </div>
+      <div class="signal-preview">${escHtml(prevText)}</div>
+      <div class="signal-detail">
+        <pre>${escHtml(detailJson)}</pre>
+        ${diffHtml}
+      </div>
+    </div>`;
+  }
+
+  function applyFilter(filter) {
+    currentFilter = filter;
+    document.querySelectorAll(".filter-btn").forEach(b =>
+      b.classList.toggle("active", b.dataset.filter === filter)
+    );
+    document.querySelectorAll(".signal-card").forEach(card => {
+      const s = card.dataset.stable   === "true";
+      const e = card.dataset.err      === "true";
+      const m = card.dataset.mismatch === "true";
+      let show = true;
+      if (filter === "stable")   show = s;
+      if (filter === "session")  show = !s;
+      if (filter === "error")    show = e;
+      if (filter === "mismatch") show = m;
+      card.style.display = show ? "" : "none";
+    });
+  }
+
+  function renderGrid(components) {
+    const keys = Object.keys(components).sort((a, b) => {
+      const sa = STABLE_KEYS.has(a) ? 1 : 0;
+      const sb = STABLE_KEYS.has(b) ? 1 : 0;
+      if (sb !== sa) return sb - sa;
+      return (SIGNAL_WEIGHTS[b] || 1) - (SIGNAL_WEIGHTS[a] || 1);
+    });
+
+    $("signalsGrid").innerHTML = keys
+      .map((k, i) => renderSignalCard(k, components[k], previousComponents ? previousComponents[k] : null, i))
+      .join("");
+
+    $("signalsGrid").querySelectorAll(".signal-card").forEach(card => {
+      card.addEventListener("click", () => card.classList.toggle("expanded"));
+    });
+
+    applyFilter(currentFilter);
+  }
+
+  function runCompare() {
+    if (!previousComponents || !currentComponents) return;
+
+    const match = kagura.matchComponents(previousComponents, currentComponents);
+
+    const pct = Math.round(match.score * 100);
+    $("matchFill").style.width = pct + "%";
+    $("matchNum").textContent  = match.score.toFixed(3);
+    $("matchVerdict2").textContent = " " + match.verdict;
+
+    $("matchBanner").classList.add("visible");
+    const vEl = $("matchVerdict");
+    vEl.textContent = match.verdict.toUpperCase();
+    vEl.className   = "match-verdict " + match.verdict;
+
+    const mismatchCount = Object.values(match.breakdown).filter(b => !b.matched).length;
+    $("matchDetail").innerHTML =
+      `Score: <b>${match.score.toFixed(3)}</b> &nbsp;|&nbsp; ` +
+      `Matched weight: <b>${match.matchedWeight}/${match.totalWeight}</b> &nbsp;|&nbsp; ` +
+      `Mismatched signals: <b>${mismatchCount}</b>`;
+
+    if (mismatchCount > 0) {
+      $("filterMismatch").style.display = "";
+      $("filterMismatch").textContent   = "MISMATCH (" + mismatchCount + ")";
+    }
+
+    renderGrid(currentComponents);
+  }
+
+  async function runScan() {
+    const btn = $("btnScan");
+    btn.disabled = true;
+    btn.textContent = "⏳ SCANNING…";
+    $("statusLine").innerHTML = "Collecting signals…";
+    $("progressBar").classList.add("visible", "scanning");
+    $("matchBanner").classList.remove("visible");
+    $("filterMismatch").style.display = "none";
+
+    let prog = 0;
+    const progTimer = setInterval(() => {
+      prog = Math.min(prog + Math.random() * 7, 88);
+      $("progressFill").style.width = prog + "%";
+    }, 220);
+
+    const scanStart = Date.now();
+
+    try {
+      const fp     = await kagura.load({ debug: false });
+      const result = await fp.get();
+      const elapsed = Date.now() - scanStart;
+
+      clearInterval(progTimer);
+      $("progressFill").style.width = "100%";
+      $("progressBar").classList.remove("scanning");
+
+      if (currentComponents) previousComponents = currentComponents;
+      currentComponents = result.components;
+
+      $("visitorId").textContent = result.visitorId;
+      $("sessionId").textContent = result.sessionId;
+      $("stableId").textContent  = result.stableId;
+      ["cardVisitor","cardSession","cardStable"].forEach(id => $(id).classList.add("ready"));
+
+      const total = Object.keys(result.components).length;
+      const ok    = Object.values(result.components).filter(c => !("error" in c)).length;
+      const conf  = Math.round(result.confidence * 100);
+      const stab  = Math.round(result.stability  * 100);
+      const cov   = Math.round(ok / total * 100);
+
+      setTimeout(() => {
+        $("confFill").style.width = conf + "%";
+        $("stabFill").style.width = stab + "%";
+        $("covFill").style.width  = cov  + "%";
+      }, 80);
+
+      $("confNum").textContent  = result.confidence.toFixed(3);
+      $("stabNum").textContent  = result.stability.toFixed(3);
+      $("covNum").textContent   = ok;
+      $("covTotal").textContent = total;
+      $("scanDuration").textContent = elapsed;
+
+      $("signalCount").textContent    = ok + " / " + total + " collected";
+      $("footerSignalCount").textContent = total;
+
+      renderGrid(result.components);
+
+      if (previousComponents) $("btnCompare").classList.add("visible");
+
+      $("statusLine").innerHTML =
+        `Complete — <b>${elapsed}ms</b> · ${total} signals · ` +
+        `visitorId: <b>${result.visitorId.slice(0, 16)}…</b>`;
+
+    } catch (err) {
+      clearInterval(progTimer);
+      $("statusLine").innerHTML = `<span class="err">Error: ${escHtml(err.message)}</span>`;
+      console.error("[kagura demo]", err);
+    }
+
+    setTimeout(() => {
+      $("progressBar").classList.remove("visible");
+      $("progressFill").style.width = "0%";
+    }, 1200);
+
+    btn.disabled    = false;
+    btn.textContent = "▶ RE-SCAN";
+  }
+
+  $("btnScan").addEventListener("click", runScan);
+  $("btnCompare").addEventListener("click", runCompare);
+
+  document.querySelectorAll(".filter-btn").forEach(btn =>
+    btn.addEventListener("click", () => applyFilter(btn.dataset.filter))
+  );
+
+  window.addEventListener("load", () => setTimeout(runScan, 400));
+
+})();
+</script>
+</body>
+</html>

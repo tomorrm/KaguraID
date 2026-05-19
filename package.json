@@ -1,0 +1,34 @@
+{
+  "name": "kagurajs",
+  "version": "1.0.0",
+  "description": "A lightweight, dependency-free browser fingerprinting library using the proprietary KaguraHash-256 algorithm.",
+  "main": "src/kagura.js",
+  "type": "commonjs",
+  "scripts": {
+    "lint": "eslint src/**/*.js --format=stylish",
+    "format:check": "prettier --check src/**/*.js",
+    "format:fix": "prettier --write src/**/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tomorrm/kagurajs.git"
+  },
+  "keywords": [
+    "fingerprint",
+    "browser",
+    "fingerprinting",
+    "kagurahash"
+  ],
+  "author": "",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/tomorrm/kagurajs/issues"
+  },
+  "homepage": "https://github.com/tomorrm/kagurajs#readme",
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.4.0",
+    "globals": "17.6.0",
+    "prettier": "3.8.3"
+  }
+}
