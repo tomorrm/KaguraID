@@ -1,0 +1,11 @@
+packages:
+  - "."
+
+minimumReleaseAge: 10080
+minimumReleaseAgeStrict: true
+blockExoticSubdeps: true
+strictDepBuilds: true
+minimumReleaseAgeExclude:
+  - eslint@10.4.0
+allowBuilds:
+  javascript-obfuscator: true

@@ -1,4 +1,4 @@
-# kagura.js
+# KaguraID
 
 **A lightweight, dependency-free browser fingerprinting library** that collects 52 browser/device signals and generates identifiers with **KaguraHash-256**.
 
@@ -22,10 +22,10 @@
 ### 1. Use from source in browser
 
 ```html
-<script src="./src/kagura.js"></script>
+<script src="./src/kagura-id.js"></script>
 <script>
   (async () => {
-    const fp = await kagura.load();
+    const fp = await kaguraId.load();
     const result = await fp.get();
     console.log(result.visitorId, result.confidence, result.stability);
   })();
@@ -35,8 +35,9 @@
 ### 2. Run local demo
 
 ```bash
-git clone https://github.com/tomorrm/kagurajs.git
-cd kagurajs
+git clone https://github.com/tomorrm/kagura-id.git
+cd kagura-id
+pnpm install
 open example/demo.html          # macOS
 xdg-open example/demo.html      # Linux
 start example\demo.html         # Windows (cmd.exe)
@@ -44,7 +45,7 @@ start example\demo.html         # Windows (cmd.exe)
 
 ## API
 
-### `await kagura.load(options?)`
+### `await kaguraId.load(options?)`
 
 Initializes the agent after an idle tick.
 
@@ -73,7 +74,7 @@ Collects all configured signals and returns:
 `options`:
 - `debug?: boolean` prints detailed diagnostics to console
 
-### `kagura.matchComponents(compA, compB)`
+### `kaguraId.matchComponents(compA, compB)`
 
 Returns weighted similarity:
 
@@ -89,9 +90,9 @@ Returns weighted similarity:
 
 ### Other exports
 
-- `kagura.componentsToDebugString(components)`
-- `kagura.infHash256(input)`
-- `kagura.VERSION`
+- `kaguraId.componentsToDebugString(components)`
+- `kaguraId.infHash256(input)`
+- `kaguraId.VERSION`
 
 ## Signal Catalog
 
@@ -174,9 +175,9 @@ Read:
 ## Development
 
 ```bash
-npm install
-npm run lint
-npm run format:check
+pnpm install
+pnpm run lint
+pnpm run format:check
 ```
 
 Lint config is in `eslint.config.js`.

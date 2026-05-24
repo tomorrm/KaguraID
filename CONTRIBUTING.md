@@ -1,4 +1,4 @@
-# Contributing to kagura.js
+# Contributing to KaguraID
 
 Thank you for your interest in contributing. This document covers how to report issues, propose changes, and submit pull requests.
 
@@ -54,15 +54,15 @@ For new signals specifically, see [Adding a New Signal](#adding-a-new-signal).
 
 ## Development Setup
 
-kagura.js is distributed as a single runtime file (`src/kagura.js`) with no runtime dependencies.
+KaguraID is distributed as a single runtime file (`src/kagura-id.js`) with no runtime dependencies.
 For contributor checks (lint/format), use the Node.js toolchain from `package.json`.
 
 ```bash
-git clone https://github.com/tomorrm/kagurajs.git
-cd kagurajs
-npm install
-npm run lint
-npm run format:check
+git clone https://github.com/tomorrm/kagura-id.git
+cd kagura-id
+pnpm install
+pnpm run lint
+pnpm run format:check
 open example/demo.html          # macOS
 xdg-open example/demo.html      # Linux
 start example\demo.html         # Windows (cmd.exe)
@@ -83,8 +83,8 @@ ESLint configuration lives in `eslint.config.js`.
 
 3. Run lint and format checks before pushing:
    ```bash
-   npm run lint
-   npm run format:check
+   pnpm run lint
+   pnpm run format:check
    ```
 
 4. Open a pull request against `main`. Fill in the PR template (title, motivation, testing notes).
@@ -106,7 +106,7 @@ ESLint configuration lives in `eslint.config.js`.
 
 ## Coding Conventions
 
-kagura.js is a UMD bundle targeting modern browsers. Follow these conventions:
+KaguraID is a UMD bundle targeting modern browsers. Follow these conventions:
 
 **Style:**
 - 2-space indentation
@@ -131,7 +131,7 @@ kagura.js is a UMD bundle targeting modern browsers. Follow these conventions:
 
 ## Adding a New Signal
 
-A signal is an entry in the `SOURCES` table in `kagura.js`. Each entry has the shape:
+A signal is an entry in the `SOURCES` table in `src/kagura-id.js`. Each entry has the shape:
 
 ```js
 signalName: {

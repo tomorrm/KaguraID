@@ -2,7 +2,7 @@ name: Build & Obfuscate
 
 on:
   push:
-    branches: [main, release]
+    branches: [main]
     tags: ["v*.*.*"]
   pull_request:
     branches: [main]
@@ -16,7 +16,8 @@ on:
         options: [high, medium, low]
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "24"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   SRC_DIR: src
   RELEASE_DIR: release
   OBFUSCATE_LEVEL: ${{ github.event.inputs.obfuscate_level || 'high' }}
@@ -31,12 +32,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          pnpm install --lockfile-only --ignore-scripts
+          pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Run ESLint
         run: |
@@ -52,24 +58,23 @@ jobs:
           fi
           echo "Target File: ${JS_FILES}"
           # shellcheck disable=SC2086
-          npx eslint ${JS_FILES} --format=stylish
+          pnpm exec eslint ${JS_FILES} --format=stylish
 
       - name: Run ESLint (SARIF for PR)
         if: github.event_name == 'pull_request'
         run: |
-          npm install --save-dev @microsoft/eslint-formatter-sarif
           JS_FILES=$(git ls-files "${{ env.SRC_DIR }}/*.js" "${{ env.SRC_DIR }}/**/*.js" 2>/dev/null | tr '\n' ' ')
           if [ -z "${JS_FILES}" ]; then
             JS_FILES=$(find "${{ env.SRC_DIR }}" -name "*.js" | tr '\n' ' ')
           fi
           # shellcheck disable=SC2086
-          npx eslint ${JS_FILES} \
+          pnpm exec eslint ${JS_FILES} \
             --format=@microsoft/eslint-formatter-sarif \
             --output-file=eslint-results.sarif || true
 
       - name: Upload SARIF report
         if: github.event_name == 'pull_request'
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: eslint-results.sarif
           category: eslint
@@ -84,12 +89,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
 
       - name: Install Prettier
-        run: npm install -g prettier
+        run: |
+          pnpm install --lockfile-only --ignore-scripts
+          pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Check formatting
         run: |
@@ -104,8 +114,8 @@ jobs:
           fi
           echo "Target files: ${JS_FILES}"
           # shellcheck disable=SC2086
-          prettier --check ${JS_FILES}
-          echo "💡 Fix locally: npx prettier --write src/**/*.js"
+          pnpm exec prettier --check ${JS_FILES}
+          echo "💡 Fix locally: pnpm exec prettier --write src/**/*.js"
 
   # ============================================================
   # Job 3: obfuscate
@@ -115,20 +125,21 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, format]
     if: >
-      github.event_name != 'pull_request' && (
-        github.ref == 'refs/heads/main' ||
-        github.ref == 'refs/heads/release' ||
-        startsWith(github.ref, 'refs/tags/')
-      )
+      github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
 
       - name: Install tools
-        run: npm install -g terser javascript-obfuscator
+        run: |
+          pnpm install --lockfile-only --ignore-scripts
+          pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Write obfuscation options to file
         run: |
@@ -223,6 +234,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [obfuscate]
     if: needs.obfuscate.result == 'success'
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -288,13 +301,8 @@ jobs:
   pages:
     name: "🌐 Publish GitHub Pages"
     runs-on: ubuntu-latest
-    # Publish on every push to main/release and on tags
-    if: >
-      github.event_name != 'pull_request' && (
-        github.ref == 'refs/heads/main' ||
-        github.ref == 'refs/heads/release' ||
-        startsWith(github.ref, 'refs/tags/')
-      )
+    # Publish only from main. Tags produce release packages, not Pages deployments.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     # Grant write permission to deploy Pages
     permissions:
       contents: read
@@ -313,9 +321,9 @@ jobs:
           cp example/demo.html _site/index.html
           # Copy library so the demo can load it via relative path
           mkdir -p _site/src
-          cp src/kagura.js _site/src/kagura.js
+          cp src/kagura-id.js _site/src/kagura-id.js
           # Rewrite the script src to match the deployed directory layout
-          sed -i 's|../src/kagura.js|src/kagura.js|g' _site/index.html
+          sed -i 's|../src/kagura-id.js|src/kagura-id.js|g' _site/index.html
           echo "✅ Site built:"
           ls -lh _site/
 

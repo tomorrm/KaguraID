@@ -13,7 +13,7 @@ A clear and concise description of the problem.
 ## Steps to reproduce
 
 1. Open browser X on OS Y
-2. Load the page with kagura.js
+2. Load the page with KaguraID
 3. Call `fp.get()`
 4. Observe result
 
@@ -30,15 +30,15 @@ What actually happened. Include the relevant signal value or error message.
 Paste a minimal HTML snippet or link to a reproduction here:
 
 ```html
-<script src="kagura.js"></script>
+<script src="kagura-id.js"></script>
 <script>
-  kagura.load().then(fp => fp.get({ debug: true })).then(r => console.log(r));
+  kaguraId.load().then((fp) => fp.get({ debug: true })).then((r) => console.log(r));
 </script>
 ```
 
 ## Debug output
 
-Paste the `[kagura] Debug:` console output here (run with `fp.get({ debug: true })`).
+Paste the `[KaguraID] Debug:` console output here (run with `fp.get({ debug: true })`).
 
 ```
 version: 1.0.0
@@ -49,7 +49,7 @@ components: ...
 
 ## Environment
 
-- **kagura.js version:**
+- **KaguraID version:**
 - **Browser & version:**
 - **OS:**
 - **Signal(s) involved** (if known):

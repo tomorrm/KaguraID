@@ -24,7 +24,7 @@ Please report security issues using one of the following channels:
 - Description of the vulnerability and its potential impact
 - Steps to reproduce (minimal reproduction preferred)
 - Browser and OS version
-- The version(s) of kagura.js affected
+- The version(s) of KaguraID affected
 - Whether you have a proposed fix or mitigation
 
 ### Response timeline
@@ -62,8 +62,8 @@ The following are out of scope:
 
 ## Security Design Notes
 
-**kagura.js is a client-side library.** It runs in the user's browser and its output is as trustworthy as any client-side data. Do not use fingerprint values as a sole authentication or authorisation mechanism.
+**KaguraID is a client-side library.** It runs in the user's browser and its output is as trustworthy as any client-side data. Do not use fingerprint values as a sole authentication or authorisation mechanism.
 
-**The library does not make network requests.** No data is transmitted by kagura.js itself. Data transmission is the responsibility of the application that calls `fp.get()`.
+**The library does not make network requests.** No data is transmitted by KaguraID itself. Data transmission is the responsibility of the application that calls `fp.get()`.
 
 **KaguraHash-256 is not a cryptographic hash.** It is designed for speed and distribution quality, not security. Do not use it to hash passwords, derive keys, or verify data integrity in a security-critical context.

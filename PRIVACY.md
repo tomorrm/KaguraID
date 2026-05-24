@@ -1,12 +1,12 @@
 # Privacy Considerations
 
-kagura.js collects browser and hardware characteristics to generate a probabilistic device identifier. This document describes what is collected, what is not collected, and the legal and ethical responsibilities of anyone who deploys this library.
+KaguraID collects browser and hardware characteristics to generate a probabilistic device identifier. This document describes what is collected, what is not collected, and the legal and ethical responsibilities of anyone who deploys this library.
 
 ---
 
-## What kagura Collects
+## What kaguraId Collects
 
-kagura collects **browser and device attributes** — not personal data in the traditional sense. The collected signals include:
+kaguraId collects **browser and device attributes** — not personal data in the traditional sense. The collected signals include:
 
 - Rendering output from Canvas 2D and WebGL (used as a hash input, not stored as an image)
 - Installed fonts (detected by measuring text dimensions, not by reading font files)
@@ -21,7 +21,7 @@ kagura collects **browser and device attributes** — not personal data in the t
 - Browser extension presence indicators (based on global JavaScript variables)
 - `performance.now` precision level
 
-**kagura does NOT collect:**
+**kaguraId does NOT collect:**
 - Raw IP addresses (WebRTC collects only whether a local/private IP exists and whether IPv6 is available)
 - Usernames, email addresses, or any account credentials
 - Precise geolocation
@@ -52,7 +52,7 @@ This section is informational only and does not constitute legal advice. Consult
 The ePrivacy Directive (as implemented in EU member states) requires **prior informed consent** before storing information on a user's device or accessing information already stored. Fingerprinting — even without cookies — likely falls within this scope.
 
 Required actions:
-- Obtain explicit, freely given, specific consent before running kagura
+- Obtain explicit, freely given, specific consent before running kaguraId
 - Disclose fingerprinting in your Privacy Policy and Cookie/Tracking Notice
 - Provide a mechanism for users to withdraw consent
 - Maintain a record of consent (Article 7(1) GDPR)
@@ -76,12 +76,12 @@ Similar obligations exist under LGPD (Brazil), PDPA (Thailand), PDPD (Vietnam), 
 
 ### Consent gate
 
-Do not call `kagura.load()` until the user has given consent.
+Do not call `kaguraId.load()` until the user has given consent.
 
 ```js
 // Example: only run after consent is confirmed
 if (userHasConsented()) {
-  const fp = await kagura.load();
+  const fp = await kaguraId.load();
   const result = await fp.get();
   sendToServer(result.visitorId);
 }
@@ -103,11 +103,11 @@ Do not retain fingerprint identifiers longer than necessary. Define a retention 
 
 ### Do Not Track
 
-kagura does not automatically respect the `DNT` header. You may choose to skip collection when `navigator.doNotTrack === "1"`.
+kaguraId does not automatically respect the `DNT` header. You may choose to skip collection when `navigator.doNotTrack === "1"`.
 
 ```js
 if (navigator.doNotTrack === "1") return;
-const fp = await kagura.load();
+const fp = await kaguraId.load();
 ```
 
 ### Security
@@ -125,7 +125,7 @@ const fp = await kagura.load();
 | Fraud detection (after login) | Generally considered legitimate interest; still requires disclosure |
 | Bot detection | Generally acceptable; disclose in terms of service |
 | Anonymous analytics without consent | Legally risky in EU/UK; avoid |
-| Cross-site tracking | Not supported by kagura by design; prohibited under GDPR |
+| Cross-site tracking | Not supported by kaguraId by design; prohibited under GDPR |
 | Replacing cookies without consent | Prohibited under ePrivacy Directive |
 | Security / account integrity | Acceptable with disclosure; pair with explicit user notice |
 
@@ -133,7 +133,7 @@ const fp = await kagura.load();
 
 ## Responsible Disclosure
 
-If you discover a privacy or security vulnerability in kagura.js, please report it privately rather than opening a public issue. Email the maintainers at the address listed in the repository or use GitHub's private vulnerability reporting feature.
+If you discover a privacy or security vulnerability in KaguraID, please report it privately rather than opening a public issue. Email the maintainers at the address listed in the repository or use GitHub's private vulnerability reporting feature.
 
 We will acknowledge reports within 72 hours and aim to release a fix within 14 days for confirmed issues.
 
