@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to kagura.js are documented here.
+All notable changes to KaguraID are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`). Breaking changes increment `MAJOR`, new backward-compatible features increment `MINOR`, and bug fixes increment `PATCH`.
 
@@ -10,7 +10,7 @@ This project follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PA
 
 ### Added
 
-- Initial public release of `kagura.js` as a UMD browser library
+- Initial public release of `KaguraID` as a UMD browser library
 - 52-signal collection pipeline with per-signal timeout and fallback handling
 - KaguraHash-256 based ID generation:
   - `visitorId` (stable signals)

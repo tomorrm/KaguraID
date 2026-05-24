@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>kagura.js — Browser Fingerprint Demo</title>
+<title>KaguraID — Browser Fingerprint Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
@@ -254,7 +254,7 @@
 
   <header>
     <div class="header-eyebrow">Browser Intelligence</div>
-    <h1>kagura.js</h1>
+    <h1>KaguraID</h1>
     <p class="header-sub">
       Browser fingerprinting library.<br>
       Proprietary <b>KaguraHash-256</b> algorithm · 3-layer ID system · Fuzzy match scoring.
@@ -339,7 +339,7 @@
   <div class="signals-grid" id="signalsGrid"></div>
 
   <footer>
-    <span><b>kagura</b> <span id="footerVersion">v-</span></span>
+    <span><b>kaguraId</b> <span id="footerVersion">v-</span></span>
     <span>Algorithm: <b>KaguraHash-256</b></span>
     <span>Signals: <b id="footerSignalCount">52</b> total</span>
     <span class="footer-privacy">// No data is transmitted externally</span>
@@ -347,14 +347,14 @@
 
 </div>
 
-<script src="../src/kagura.js"></script>
+<script src="../src/kagura-id.js"></script>
 
 <script>
 (function () {
   "use strict";
 
   const $ = id => document.getElementById(id);
-  const LIB_VERSION = typeof kagura !== "undefined" && kagura.VERSION ? kagura.VERSION : "unknown";
+  const LIB_VERSION = typeof kaguraId !== "undefined" && kaguraId.VERSION ? kaguraId.VERSION : "unknown";
   $("footerVersion").textContent = "v" + LIB_VERSION;
 
   const STABLE_KEYS = new Set([
@@ -513,7 +513,7 @@
   function runCompare() {
     if (!previousComponents || !currentComponents) return;
 
-    const match = kagura.matchComponents(previousComponents, currentComponents);
+    const match = kaguraId.matchComponents(previousComponents, currentComponents);
 
     const pct = Math.round(match.score * 100);
     $("matchFill").style.width = pct + "%";
@@ -557,7 +557,7 @@
     const scanStart = Date.now();
 
     try {
-      const fp     = await kagura.load({ debug: false });
+      const fp     = await kaguraId.load({ debug: false });
       const result = await fp.get();
       const elapsed = Date.now() - scanStart;
 
@@ -605,7 +605,7 @@
     } catch (err) {
       clearInterval(progTimer);
       $("statusLine").innerHTML = `<span class="err">Error: ${escHtml(err.message)}</span>`;
-      console.error("[kagura demo]", err);
+      console.error("[kaguraId demo]", err);
     }
 
     setTimeout(() => {

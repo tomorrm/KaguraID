@@ -1,6 +1,6 @@
 /**
- * kagura.js v1.0.0
- * Browser fingerprinting library  -  proprietary kaguraHash-256 algorithm
+ * KaguraID v1.0.0
+ * Browser fingerprinting library - proprietary KaguraHash-256 algorithm
  */
 
 (function (global, factory) {
@@ -9,7 +9,8 @@
   } else if (typeof define === "function" && define.amd) {
     define(factory);
   } else {
-    (global || self).kagura = factory();
+    const api = factory();
+    (global || self).kaguraId = api;
   }
 })(this, function () {
   "use strict";
@@ -1465,7 +1466,7 @@
   }
 
   /**
-   * kagura.load(options?) -> FingerprintAgent
+   * kaguraId.load(options?) -> FingerprintAgent
    * @param {object} [options]
    * @param {number}  [options.delayFallback=50] - fallback idle wait ms
    * @param {boolean} [options.debug=false]      - log full debug block to console
@@ -1499,7 +1500,7 @@
 
         if (debug || getOptions?.debug) {
           console.log(
-            `[kagura v${VERSION}] Debug:\n\`\`\`\n` +
+            `[KaguraID v${VERSION}] Debug:\n\`\`\`\n` +
               `version: ${VERSION}\n` +
               `userAgent: ${navigator.userAgent}\n` +
               `loadToGet: ${startedAt - loadedAt}ms\n` +

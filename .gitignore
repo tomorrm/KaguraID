@@ -5,7 +5,8 @@
 .DS_Store
 .AppleDouble
 .LSOverride
-Icon[]
+Icon[
+]
 
 # Thumbnails
 ._*
@@ -122,6 +123,9 @@ web_modules/
 
 # Optional npm cache directory
 .npm
+
+# Optional pnpm cache directory
+.pnpm-store
 
 # Optional eslint cache
 .eslintcache
