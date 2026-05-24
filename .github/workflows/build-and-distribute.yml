@@ -17,6 +17,7 @@ on:
 
 env:
   NODE_VERSION: "24"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   SRC_DIR: src
   RELEASE_DIR: release
   OBFUSCATE_LEVEL: ${{ github.event.inputs.obfuscate_level || 'high' }}
@@ -73,7 +74,7 @@ jobs:
 
       - name: Upload SARIF report
         if: github.event_name == 'pull_request'
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: eslint-results.sarif
           category: eslint
